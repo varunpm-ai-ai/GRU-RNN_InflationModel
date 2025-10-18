@@ -12,7 +12,6 @@ st.set_page_config(page_title="Inflation GRU Demo", layout="wide")
 st.title("Inflation GRU — Mini Project Demo")
 st.markdown("Select model (India / Bangalore), provide a dataset (CSV) or use a default, then compare Actual vs Predicted CPI.")
 
-# --- model & scaler mapping (adjust filenames if yours differ) ---
 MODEL_DIR = Path("models")
 model_map = {
     "India (gru_model.h5)": {
@@ -25,7 +24,6 @@ model_map = {
     }
 }
 
-# Sidebar controls
 with st.sidebar:
     choice = st.selectbox("Choose model", list(model_map.keys()))
     use_uploaded = st.checkbox("Upload CSV (override default)", value=False)
@@ -39,13 +37,11 @@ with st.sidebar:
     st.caption("• Models expected in `models/` folder. Filenames in mapping can be edited in the code.")
     st.caption("• CSV must include a 'Year' column and numeric columns: 'CPI' and factor columns (Gold_Prices, Crude_Oil_Prices, Real_Estate_Index, Stock_Index).")
 
-# load dataset
 def load_dataframe():
     if uploaded is not None:
         return pd.read_csv(uploaded)
     p = Path(default_path)
     if not p.exists():
-        # try from project root
         p2 = Path.cwd() / default_path
         if p2.exists():
             p = p2
@@ -58,7 +54,6 @@ df = load_dataframe()
 if df is None:
     st.stop()
 
-# basic cleaning & checks
 if "Year" not in df.columns:
     st.error("CSV must contain a 'Year' column.")
     st.stop()
@@ -69,7 +64,6 @@ if "CPI" not in df.columns:
 df = df.sort_values("Year").reset_index(drop=True)
 years = df["Year"].values
 
-# try load model & scaler
 model_path = model_map[choice]["model"]
 scaler_path = model_map[choice]["scaler"]
 
@@ -86,7 +80,6 @@ def load_scaler(p: str):
         return joblib.load(p)
     except Exception:
         try:
-            # try pickle
             import pickle
             with open(p, "rb") as f:
                 return pickle.load(f)
@@ -100,9 +93,7 @@ if model is None:
     st.error(f"Could not load model from {model_path}. Check filename/path.")
     st.stop()
 
-# prepare sequences using numeric columns except Year; target = CPI
 numeric_cols = df.select_dtypes(include=[np.number]).columns.tolist()
-# ensure CPI included; remove Year
 if "Year" in numeric_cols:
     numeric_cols.remove("Year")
 features = [c for c in numeric_cols if c != "CPI"]
@@ -110,12 +101,11 @@ if "CPI" not in numeric_cols:
     st.error("No numeric 'CPI' column found after type inference.")
     st.stop()
 
-# build sliding windows for features; y is CPI at time t
 vals = df[features].values
 cpi_vals = df["CPI"].values
 X, y, idx_years = [], [], []
 for i in range(n_steps, len(df)):
-    X.append(vals[i - n_steps:i])       # shape (n_steps, n_features)
+    X.append(vals[i - n_steps:i])    
     y.append(cpi_vals[i])
     idx_years.append(df["Year"].iloc[i])
 if len(X) == 0:
@@ -124,26 +114,21 @@ if len(X) == 0:
 X = np.array(X)
 y = np.array(y)
 
-# model predict (model may expect different feature layout — we attempt to call)
 try:
     y_pred_s = model.predict(X, verbose=0)
-    # ensure shape
     y_pred_s = np.array(y_pred_s).reshape(-1)
 except Exception as e:
     st.error(f"Model prediction failed: {e}")
     st.stop()
 
-# inverse transform if scaler available and has inverse_transform
 if scaler is not None:
     try:
         y_pred = scaler.inverse_transform(y_pred_s.reshape(-1, 1)).reshape(-1)
     except Exception:
-        # scaler not for target or incompatible; fallback to raw
         y_pred = y_pred_s
 else:
     y_pred = y_pred_s
 
-# Layout: two columns for plot + metrics
 col1, col2 = st.columns([3,1])
 
 with col1:
@@ -158,7 +143,6 @@ with col1:
     plt.xticks(rotation=45)
     st.pyplot(fig)
 
-    # option: compare a factor selected by user (actual only)
     st.markdown("### Compare factor with CPI")
     factor = st.selectbox("Show factor", ["Gold_Prices", "Crude_Oil_Prices", "Real_Estate_Index", "Stock_Index"])
     if factor in df.columns:
