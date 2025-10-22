@@ -88,6 +88,60 @@ bash
 2. Prepare your dataset with the above factors.
 3. Train the GRU-RNN model using the provided scripts.
 4. Evaluate the model performance for your region of interest.
+5. Add the mode to the streamlit app 
+6. bash
+```
+streamlit run app.py  
+```
+The application will open in your browser, allowing for multi-year forecasting based on user inputs.
+
+## Model Architecture & Methodology
+The core methodology for both the national and regional models is a standard practice for time series forecasting, allowing the model to learn relationships between historical economic data and future inflation.
+
+# 1. Data Preparation (Crucial Steps)
+
+Time Step Aggregation: Input data is processed using annual averages to focus on macro-economic shifts rather than monthly volatility.
+
+Lagged Features: The model employs a time window of $N=4$ preceding years ($T-4$ to $T-1$) to predict the CPI in the target year $T$. This captures the historical inertia of inflation and economic policy impacts.
+
+Feature Scaling: All 12 input features (including lagged CPI) are crucial for the GRU model. They are standardized using StandardScaler ($\mu=0, \sigma=1$) to prevent features with larger numerical scales (like Stock_Index) from dominating the learning process.
+
+# 2. GRU Network Structure
+
+Both Model 1 and Model 2 share this identical architecture, demonstrating model transferability across datasets:
+bash
+```
+Layer   Type      Configuration                  Purpose
+
+L1      GRU       16 units, tanh activation,     Extracts sequential dependencies and prepares
+                  return_sequences=True          output for next GRU layer
+ 
+L2      Dropout   20%                            Reduces complex co-adaptations between neurons
+                                                 (overfitting)
+
+L3      GRU       8 units, tanh activation,      Consolidates the 4-year sequence data into a final,
+                  return_sequences=False         comprehensive vector for prediction.
+
+L4      Dropout   20%                            Prevents overfitting.
+
+
+L5      Dense     16 units, ReLU activation, L2  Performs non-linear transformation and feature
+                  Regularization                 weighting prior to output.
+
+output  Dense     1 unit (Linear activation)     Outputs the single predicted CPI value (scaled).
+
+```
+
+# 3. Forecasting Logic
+
+The Streamlit app utilizes Iterative Multi-Step Prediction:
+
+Prediction (Year $T$): The model takes the last 4 known years ($T-4$ to $T-1$) and predicts CPI for year $T$.
+
+Iteration (Year $T+1$): To forecast the subsequent year ($T+1$), the oldest data point ($T-4$) is dropped. The new sequence is formed by $T-3, T-2, T-1,$ and the predicted CPI from year $T$. The other economic indicators are held constant at the user-provided baseline.
+
+Output: This process repeats until the selected target year is reached, generating a robust, long-term forecast series.
+
 
 ## License
 
