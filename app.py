@@ -25,7 +25,7 @@ def create_gru_model(input_shape):
     return model
 
 try:
-    model = tf.keras.models.load_model('gru_model.h5')
+    model = tf.keras.models.load_model('models/gru_model.h5')
 except:
     st.warning("Model file 'gru_model.h5' not found. Using a dummy model structure. **Prediction values will be randomized.** Please check file path.")
     model = create_gru_model((4, 12))
