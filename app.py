@@ -6,9 +6,6 @@ import joblib
 import os
 from sklearn.metrics import mean_squared_error, mean_absolute_error, r2_score
 
-# --- 1. Model and Scaler Setup (Simulated) ---
-
-# Define model architecture (based on notebook cell 67)
 def create_gru_model(input_shape):
     """Recreates the GRU model architecture from the notebook."""
     Sequential = tf.keras.models.Sequential
@@ -25,19 +22,14 @@ def create_gru_model(input_shape):
         Dense(16, activation='relu', kernel_regularizer=l2(1e-4)),
         Dense(1)
     ])
-    # Model compilation is not strictly necessary for prediction
     return model
 
-# Simulate Loading the Model (replace with actual loading in your environment)
 try:
-    # NOTE: You MUST ensure your model file 'gru_model.h5' is accessible 
-    # in the path where this script is run.
     model = tf.keras.models.load_model('gru_model.h5')
 except:
     st.warning("Model file 'gru_model.h5' not found. Using a dummy model structure. **Prediction values will be randomized.** Please check file path.")
-    model = create_gru_model((4, 12)) # Create structure
+    model = create_gru_model((4, 12))
     
-# Features and Constants
 N_STEPS = 4
 FEATURE_COLUMNS = [
     'CPI', 'GDP_Growth', 'Unemployment_Rate', 'Crude_Oil_Prices', 
@@ -46,15 +38,11 @@ FEATURE_COLUMNS = [
     'Retail_Sales', 'Exchange_Rate'
 ]
 
-# --- SIMULATED SCALER PARAMETERS (Based on Notebook Data) ---
-# Replace these with your actual joblib.load(scaler_X/y.save) calls
 SCALER_X_MEAN = np.array([5.11, 6.31, 6.78, 68.74, 1500.56, 121.36, 39688.35, 9.94, 12.35, 4.67, 7.82, 74.56])
 SCALER_X_STD = np.array([0.56, 0.54, 0.40, 6.64, 140.01, 3.49, 1729.87, 1.48, 1.70, 0.59, 0.81, 3.51])
 SCALER_Y_MEAN = 4.8858
 SCALER_Y_STD = 0.5284
 
-# Historical Data: Actual values for the last 3 full years (2020-2022) 
-# This forms the first 3 time steps of the initial 4-year sequence (T-4 to T-2)
 HISTORICAL_DATA_VALUES = [
     [5.756273, 6.343160, 6.971051, 75.890515, 1619.488071, 125.485362, 39307.487673, 10.015411, 13.375982, 5.662490, 8.069475, 72.615050],
     [5.323190, 7.013432, 6.887029, 71.948621, 1368.812355, 117.014727, 40032.619870, 8.705226, 11.538070, 5.123542, 8.472919, 75.334917],
@@ -62,32 +50,25 @@ HISTORICAL_DATA_VALUES = [
 ]
 HISTORICAL_DF = pd.DataFrame(HISTORICAL_DATA_VALUES, columns=FEATURE_COLUMNS, index=[2020, 2021, 2022])
 
-# Test Set Results (for comparison/validation)
 TEST_SET_RESULTS = pd.DataFrame({
     'Year': [2021, 2022, 2023],
     'Actual CPI (%)': [5.3232, 4.7649, 4.5710],
     'Predicted CPI (%)': [5.1538, 4.9648, 4.8591] 
 })
 
-# --- 2. Multi-Step Prediction Function ---
 
 def single_prediction_step(sequence, model, mean_X, std_X, mean_y, std_y):
     """Scales a 4-step sequence, predicts the next CPI (scalar), and inverse transforms it."""
     
-    # Sequence shape check: Must be (N_STEPS, N_FEATURES)
     if sequence.shape != (N_STEPS, len(FEATURE_COLUMNS)):
         raise ValueError("Sequence shape error in single_prediction_step.")
     
-    # Scale: (4, 12) -> Scaled
     X_scaled = (sequence - mean_X) / std_X
-    
-    # Reshape for GRU: (1, 4, 12)
+
     X_input = X_scaled.reshape(1, N_STEPS, X_scaled.shape[1])
     
-    # Predict (on scaled output)
     y_pred_s = model.predict(X_input, verbose=0)[0, 0]
     
-    # Inverse transform
     y_pred = (y_pred_s * std_y) + mean_y
     
     return y_pred
@@ -97,18 +78,12 @@ def multi_step_forecast(latest_data_2023, historical_df, model, target_year):
     forecast_results = {}
     current_year = 2024
     
-    # Start with the latest actual data (2023)
     latest_sequence_data = historical_df.tail(N_STEPS - 1).values
     
-    # The first prediction uses the 2020, 2021, 2022 historical data 
-    # plus the user's 2023 inputs (the 4th step).
-    
-    # Initial 4-step sequence (2020-2023)
     current_sequence = np.vstack([latest_sequence_data, np.array(list(latest_data_2023.values()))])
 
     while current_year <= target_year:
         
-        # 1. Predict CPI for the current_year
         predicted_cpi = single_prediction_step(
             current_sequence, 
             model, 
@@ -118,22 +93,13 @@ def multi_step_forecast(latest_data_2023, historical_df, model, target_year):
         
         forecast_results[current_year] = predicted_cpi
         
-        # Stop if we hit the target year
         if current_year == target_year:
             break
             
-        # 2. Prepare the sequence for the NEXT year (T+1)
-        
-        # The new sequence for T+1 prediction drops the oldest year (2020)
-        # and shifts up (2021, 2022, 2023). 
-        # The 4th slot (2024 data) will be the 'new' predicted CPI and the other 11 inputs from 2023 (held constant).
-        
-        # Drop the oldest year (first row)
         next_sequence = current_sequence[1:].copy()
         
-        # Create the new time step T+1 (predicted CPI, and held constant economic inputs)
         new_time_step = np.array([
-            predicted_cpi,  # CPI_lag1 for T+1
+            predicted_cpi, 
             latest_data_2023['GDP_Growth'], 
             latest_data_2023['Unemployment_Rate'], 
             latest_data_2023['Crude_Oil_Prices'], 
@@ -147,7 +113,6 @@ def multi_step_forecast(latest_data_2023, historical_df, model, target_year):
             latest_data_2023['Exchange_Rate']
         ])
         
-        # Update the last time step of the current sequence
         current_sequence = np.vstack([next_sequence, new_time_step.reshape(1, -1)])
         
         current_year += 1
@@ -155,7 +120,6 @@ def multi_step_forecast(latest_data_2023, historical_df, model, target_year):
     return forecast_results
 
 
-# --- 3. Streamlit Application UI ---
 st.set_page_config(
     page_title="India Inflation (CPI) Multi-Year Forecast",
     layout="wide",
@@ -185,7 +149,6 @@ For forecasts beyond 2024, the model uses the *predicted CPI* from the previous 
 while holding the other 11 economic factors constant at your 2023 input values.
 """)
 
-# --- Input Form ---
 latest_inputs = {}
 input_labels = {
     'CPI': 'Current Year CPI (2023 Average)',
@@ -202,7 +165,6 @@ input_labels = {
     'Exchange_Rate': 'Exchange Rate (Local/USD)'
 }
 
-# Define max/min values based on typical ranges and the scale of the input data
 RANGE_CONSTRAINTS = {
     'CPI': {'min': 1.0, 'max': 10.0},
     'GDP_Growth': {'min': -5.0, 'max': 15.0},
@@ -210,7 +172,6 @@ RANGE_CONSTRAINTS = {
     'Crude_Oil_Prices': {'min': 30.0, 'max': 120.0},
     'Gold_Prices': {'min': 1000.0, 'max': 2500.0},
     'Real_Estate_Index': {'min': 80.0, 'max': 160.0},
-    # Stock Index should be large enough for market values
     'Stock_Index': {'min': 25000.0, 'max': 65000.0}, 
     'Money_Supply_M1': {'min': 1.0, 'max': 20.0},
     'Money_Supply_M2': {'min': 3.0, 'max': 22.0},
@@ -234,11 +195,9 @@ with st.form("inflation_form"):
 
     cols = st.columns(3)
     
-    # Collect all 12 inputs
     for i, (key, label) in enumerate(input_labels.items()):
         col = cols[i % 3]
         with col:
-            # Setting realistic defaults based on the 2023 data in the notebook
             default_value = HISTORICAL_DF.iloc[-1][key] if key != 'CPI' else 4.5710
             
             latest_inputs[key] = st.number_input(
@@ -251,45 +210,29 @@ with st.form("inflation_form"):
 
     submitted = st.form_submit_button(f"Generate Forecast up to {target_year}", type="primary")
 
-# --- 4. Prediction Logic and Results ---
 if submitted:
     try:
-        # Re-map user inputs into a single dictionary (2023 data)
         latest_data_2023 = {k: v for k, v in latest_inputs.items()}
-        
-        # Ensure input features are in the correct order for SCALER_X_MEAN/STD
-        # This is the sequence of features: [CPI, GDP_Growth, UR, Crude, Gold, RE, Stock, M1, M2, IP, Retail, Exchange]
         ordered_latest_inputs = {col: latest_inputs[col] for col in FEATURE_COLUMNS}
-        
-        # --- Perform Multi-Step Forecast ---
         forecast_results = multi_step_forecast(
             ordered_latest_inputs, 
             HISTORICAL_DF, 
             model, 
             target_year
         )
-        
-        # --- Prepare DataFrames for Display and Charting ---
-        
-        # 1. Historical/Test Data for comparison
         historical_df = TEST_SET_RESULTS.copy()
         historical_df['Type'] = 'Actual (Validation)'
         historical_df.loc[historical_df['Year'] == 2023, 'Type'] = 'Latest Input (2023 Actual)'
         historical_df.rename(columns={'Actual CPI (%)': 'CPI (%)'}, inplace=True)
         
-        # 2. Forecast Data (starting from 2024)
         forecast_list = [{'Year': year, 'CPI (%)': cpi} for year, cpi in forecast_results.items()]
         forecast_df = pd.DataFrame(forecast_list)
         forecast_df['Type'] = 'Forecast'
         
-        # 3. Combine DataFrames for a single plot
         plot_data = pd.concat([historical_df, forecast_df], ignore_index=True)
         
-        # --- Display Results ---
+        st.markdown("### Multi-Year CPI Forecast Results", unsafe_allow_html=True)
         
-        st.markdown("### 🎯 Multi-Year CPI Forecast Results", unsafe_allow_html=True)
-        
-        # Chart Display
         st.line_chart(
             plot_data,
             x='Year',
@@ -297,8 +240,7 @@ if submitted:
             color='Type',
             height=350
         )
-        
-        # Table Display (only forecast years)
+
         st.markdown(f"##### Predicted CPI Values (2024 - {target_year})")
         st.dataframe(
             forecast_df[['Year', 'CPI (%)']].set_index('Year').style.format("{:.4f}"),
@@ -312,7 +254,6 @@ if submitted:
         st.error("Please ensure the model file is correctly loaded and the input format is consistent.")
         st.exception(e)
         
-# --- Historical Context ---
 st.markdown("---")
 st.markdown("#### Model Context and Test Performance")
 st.write("The GRU model uses a 4-year sequence to make a 1-year ahead prediction. The initial sequence is built from the latest actual data available (2020-2022) and your 2023 inputs.")
