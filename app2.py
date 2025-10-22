@@ -25,7 +25,7 @@ def create_gru_model(input_shape):
     return model
 
 try:
-    model_path = os.path.join(os.path.dirname(__file__), 'gru_model.h5')
+    model_path = os.path.join(os.path.dirname(__file__), 'gru_model2.h5')
     model = tf.keras.models.load_model(model_path, compile=False)
 except:
     st.warning("Model file 'gru_model.h5' not found. Using a dummy model structure. **Prediction values will be randomized.** Please check file path.")
@@ -122,7 +122,7 @@ def multi_step_forecast(latest_data_2023, historical_df, model, target_year):
 
 
 st.set_page_config(
-    page_title="India Inflation (CPI) Multi-Year Forecast",
+    page_title="Bengalore Inflation (CPI) Multi-Year Forecast",
     layout="wide",
     initial_sidebar_state="expanded"
 )
@@ -142,7 +142,7 @@ st.markdown(
     unsafe_allow_html=True
 )
 
-st.markdown('<p class="main-header">📈 India CPI Multi-Year Forecast (GRU Model)</p>', unsafe_allow_html=True)
+st.markdown('<p class="main-header">📈 Bengalore CPI Multi-Year Forecast (GRU Model)</p>', unsafe_allow_html=True)
 
 st.write("""
 This application uses your trained GRU model to predict the Consumer Price Index (CPI) year-by-year. 
