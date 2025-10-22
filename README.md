@@ -87,7 +87,9 @@ bash
 │
 ├──app.py
 ├──app2.py
+├──notebookscript.py
 ├──README.md
+├──modelcard.md
 ```
 
 ## Usage
