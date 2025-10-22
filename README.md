@@ -5,7 +5,8 @@ Predicting inflation rates of indian economy and benglore economy using an upgra
 
 This project utilizes a GRU-RNN (Gated Recurrent Unit - Recurrent Neural Network) to predict inflation rates for both the Indian economy and the Bangalore region. The model leverages multiple economic indicators to achieve high accuracy in forecasting.
 
-bash```
+bash
+```
 Model                     Focus           Key Feature
 
 Model 1: India National  National-level  Multi-year, iterative forecasting using user-defined
@@ -15,7 +16,7 @@ Model 2: Bengaluru       Local/Regional  Demonstrates adaptability of the GRU ar
 CPI Forecast             inflation.      specific regional data.
 ```
 
-## Key Factors Used
+##  Key Economic Indicators Used
 
 - **CPI (Consumer Price Index)**
 - **GDP Growth**
@@ -32,12 +33,54 @@ CPI Forecast             inflation.      specific regional data.
 
 These factors are consistently used for both the Indian and Bangalore inflation predictions.
 
-## Model Details
+## Technology Stack
+Primary Language: Python 3.x
+Modeling Framework: TensorFlow / Keras (GRU RNN)
+Data Handling: Pandas, NumPy
+Web Application: Streamlit (for interactive demonstration)
+Model Persistence: joblib (for saving and loading scalers)
+Visualization: Matplotlib / Streamlit native charting
 
-- **Model Type:** GRU-RNN
-- **Accuracy:**
-    - Bangalore: **82%**
-    - India: **80%**
+##  Getting Started (Local Setup)
+To run the interactive Streamlit application and recreate the models, follow these steps.
+
+# Prerequisites
+Python: Ensure you have Python 3.8+ installed.
+Required Libraries: Install all necessary dependencies in requiremets.txt using pip.
+
+bash
+```
+pip install requirements.txt
+```
+
+## File Structure
+Your project directory must be structured as follows. You need to train and save all necessary files into the /models folder.
+
+bash
+```
+/root_foulder
+├──/datasets
+│    ├──/Bengaloredataset
+│    │   ├──bangalore_inflation_dataset.csv
+│    ├──/IndiaDataset
+│        ├──india_inflation_dataset.csv
+│
+├──/models
+│   ├──gru_model.h5(indian model)
+│   ├──gru_model2.h5(bengalore model)
+│   ├──scaler.save(indian scaler model)
+│   ├──scaler2.save(bengalore scaler model)
+│
+├──/NoteBooks
+│   ├──/bengaluru
+│   │   ├──bengaluru-inflation-model.ipynb
+│   ├──/india
+│       ├──india-inflation-model.ipynb
+│
+├──app.py
+├──app2.py
+├──README.md
+```
 
 ## Usage
 
