@@ -1,6 +1,14 @@
 # 🇮🇳 India & Bengaluru Inflation Forecasting Models (GRU-RNN Model)
 Predicting inflation rates of indian economy and benglore economy using an upgraded method of RNN, GRU-RNN method to get the best results 
 
+# Screen shots 
+![image alt](https://github.com/varunpm-ai-ai/GRU-RNN_InflationModel/blob/main/Screenshot%202025-10-22%20144236.png?raw=true)
+<div align="center">
+ <img src="https://github.com/varunpm-ai-ai/GRU-RNN_InflationModel/blob/main/Screenshot%202025-10-22%20144737.png?raw=true" alt="img1" width="100"  />
+ <img src="https://github.com/varunpm-ai-ai/GRU-RNN_InflationModel/blob/main/Screenshot%202025-10-22%20144759.png?raw=true" alt="img2" width="100"  />
+ <img src="https://github.com/varunpm-ai-ai/GRU-RNN_InflationModel/blob/main/Screenshot%202025-10-22%20193512.png?raw=true" alt="img3" width="100"  />
+</div>
+
 ## Project Overview
 
 This project utilizes a GRU-RNN (Gated Recurrent Unit - Recurrent Neural Network) to predict inflation rates for both the Indian economy and the Bangalore region. The model leverages multiple economic indicators to achieve high accuracy in forecasting.
