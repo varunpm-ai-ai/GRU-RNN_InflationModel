@@ -5,7 +5,8 @@ Predicting inflation rates of indian economy and benglore economy using an upgra
 
 This project utilizes a GRU-RNN (Gated Recurrent Unit - Recurrent Neural Network) to predict inflation rates for both the Indian economy and the Bangalore region. The model leverages multiple economic indicators to achieve high accuracy in forecasting.
 
-bash```
+bash
+```
 Model                     Focus           Key Feature
 
 Model 1: India National  National-level  Multi-year, iterative forecasting using user-defined
