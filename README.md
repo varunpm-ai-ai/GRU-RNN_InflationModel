@@ -92,6 +92,7 @@ bash
 ├──modelcard.md
 ├──CODE_OF_CONDUCT.md
 ├──CONTRIBUTING.md
+├──pull_request_template.md
 ```
 
 ## Usage
