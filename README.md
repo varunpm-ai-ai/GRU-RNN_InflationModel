@@ -91,6 +91,7 @@ bash
 ├──README.md
 ├──modelcard.md
 ├──CODE_OF_CONDUCT.md
+├──CONTRIBUTING.md
 ```
 
 ## Usage
