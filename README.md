@@ -90,6 +90,7 @@ bash
 ├──notebookscript.py
 ├──README.md
 ├──modelcard.md
+├──CODE_OF_CONDUCT.md
 ```
 
 ## Usage
