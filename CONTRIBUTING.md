@@ -65,9 +65,11 @@ GRU-RNN_InflationModel/
 
 Ensure you have the necessary dependencies installed. You can install them using pip:
 
-bash
 ```
-pip install -r requirements.txt
+bash
+    ```bash
+    pip install -r requirements.txt
+    ```
 ```
 
 ## Reporting Issues
