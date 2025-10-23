@@ -8,13 +8,15 @@ We welcome contributions to the GRU-RNN Inflation Model project! Whether you're 
 1.  **Fork the repository:** Start by forking the project repository to your own GitHub account.
 2.  **Clone the repository:** Clone the forked repository to your local machine.
 
-    ```bash
+    bash
+    ```
     git clone https://github.com/<your-username>/GRU-RNN_InflationModel.git
     cd GRU-RNN_InflationModel
     ```
 3.  **Create a branch:** Create a new branch for your feature or bug fix.
 
-    ```bash
+    bash
+    ```
     git checkout -b feature/your-feature-name
     # or
     git checkout -b fix/your-bug-fix
@@ -23,13 +25,15 @@ We welcome contributions to the GRU-RNN Inflation Model project! Whether you're 
 5.  **Test your changes:** Ensure that your changes do not introduce any new issues and that all existing tests pass. Add new tests if necessary.
 6.  **Commit your changes:** Commit your changes with a clear and concise commit message.
 
-    ```bash
+    bash
+    ```
     git add .
     git commit -m "Add: a descriptive commit message"
     ```
 7.  **Push to your repository:** Push your branch to your forked repository.
 
-    ```bash
+    bash
+    ```
     git push origin feature/your-feature-name
     ```
 8.  **Create a pull request:** Submit a pull request to the main repository, explaining your changes and their purpose.
@@ -61,7 +65,8 @@ GRU-RNN_InflationModel/
 
 Ensure you have the necessary dependencies installed. You can install them using pip:
 
-```bash
+bash
+```
 pip install -r requirements.txt
 ```
 
