@@ -1,4 +1,4 @@
-#India & Bengaluru Inflation Forecasting Models (GRU-RNN Model)
+# India & Bengaluru Inflation Forecasting Models (GRU-RNN Model)
 Predicting inflation rates of indian economy and benglore economy using an upgraded method of RNN, GRU-RNN method to get the best results 
 
 ## Deployed app
