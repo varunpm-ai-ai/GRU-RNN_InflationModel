@@ -18,10 +18,8 @@ PREDICTION_COLUMNS = ['CPI (%)', 'GDP_Growth', 'Unemployment_Rate', 'Crude_Oil_P
                       'Money_Supply_M1', 'Money_Supply_M2', 'Industrial_Production', 
                       'Retail_Sales', 'Exchange_Rate']
 
-SCALER_X_MEAN = np.array([5.11, 6.31, 6.78, 68.74, 1500.56, 121.36, 39688.35, 9.94, 12.35, 4.67, 7.82, 74.56])
-SCALER_X_STD = np.array([0.56, 0.54, 0.40, 6.64, 140.01, 3.49, 1729.87, 1.48, 1.70, 0.59, 0.81, 3.51])
-SCALER_Y_MEAN = 4.8858
-SCALER_Y_STD = 0.5284
+SCALER_MEAN = np.array([5.11, 6.31, 6.78, 68.74, 1500.56, 121.36, 39688.35, 9.94, 12.35, 4.67, 7.82, 74.56])
+SCALER_STD = np.array([0.56, 0.54, 0.40, 6.64, 140.01, 3.49, 1729.87, 1.48, 1.70, 0.59, 0.81, 3.51])
 
 HISTORICAL_DATA_VALUES = [
     [4.501134, 5.358729, 6.547631, 63.265379, 1576.8483, 120.7920, 39388.8496, 10.7778, 12.6093, 4.2982, 7.4838, 74.9727],
@@ -49,7 +47,7 @@ FULL_HISTORICAL_CPI_DATA.loc[FULL_HISTORICAL_CPI_DATA['Year'] == 2023, 'Type'] =
 
 
 def create_gru_model(input_shape):
-    """Recreates the GRU model architecture from the notebook."""
+    """Recreates the GRU model architecture, UPDATED to output 12 features."""
     Sequential = tf.keras.models.Sequential
     GRU = tf.keras.layers.GRU
     Dense = tf.keras.layers.Dense
@@ -62,33 +60,43 @@ def create_gru_model(input_shape):
         GRU(8, activation='tanh'),
         Dropout(0.2),
         Dense(16, activation='relu', kernel_regularizer=l2(1e-4)),
-        Dense(1)
+        Dense(len(FEATURE_COLUMNS))
     ])
     return model
 
 try:
     model_path = os.path.join(os.path.dirname(__file__), 'gru_model.h5')
     model = tf.keras.models.load_model(model_path, compile=False)
+    
+    if model.output_shape[1] != len(FEATURE_COLUMNS):
+        model = create_gru_model((N_STEPS, len(FEATURE_COLUMNS)))
+        model.is_dummy = True 
+    else:
+        model.is_dummy = False
+        st.success("Successfully loaded 'gru_model.h5' with compatible 12-feature output.")
+        
 except Exception as e:
-    st.warning(f"Model file 'gru_model.h5' not found at {model_path}. Using a dummy model structure. **Prediction values will be randomized.** Please check file path.")
+    st.warning(f"Model file 'gru_model.h5' not found or failed to load (Error: {e}).")
+    st.warning(f"Creating a dummy model structure with {len(FEATURE_COLUMNS)} outputs. **Prediction values will be randomized.**")
     model = create_gru_model((N_STEPS, len(FEATURE_COLUMNS)))
+    model.is_dummy = True
     
-def single_prediction_step(sequence, model, mean_X, std_X, mean_y, std_y):
-    """Scales a 4-step sequence, predicts the next CPI (scalar), and inverse transforms it."""
+def single_prediction_step(sequence, model, scaler_mean, scaler_std):
+    """
+    Scales a 4-step sequence, predicts the NEXT 12-FEATURE vector, and inverse transforms it.
+    """
     
-    if sequence.shape != (N_STEPS, len(FEATURE_COLUMNS)):
-        if model.name == 'sequential': 
-            return (np.random.rand() * 4) + 2 
-        else:
-            raise ValueError("Sequence shape error in single_prediction_step.")
-    
-    X_scaled = (sequence - mean_X) / std_X
+    if getattr(model, 'is_dummy', False):
+        random_scaled_preds = (np.random.rand(len(FEATURE_COLUMNS)) - 0.5) * 0.5 
+        return (random_scaled_preds * scaler_std) + scaler_mean
 
+    if sequence.shape != (N_STEPS, len(FEATURE_COLUMNS)):
+        raise ValueError("Sequence shape error in single_prediction_step.")
+    
+    X_scaled = (sequence - scaler_mean) / scaler_std
     X_input = X_scaled.reshape(1, N_STEPS, X_scaled.shape[1])
-    
-    y_pred_s = model.predict(X_input, verbose=0)[0, 0]
-    
-    y_pred = (y_pred_s * std_y) + mean_y
+    y_pred_s = model.predict(X_input, verbose=0)[0] 
+    y_pred = (y_pred_s * scaler_std) + scaler_mean 
     
     return y_pred
 
@@ -99,56 +107,31 @@ def multi_step_forecast(latest_data_2023, historical_df, model, target_year):
     latest_sequence_data = historical_df.tail(N_STEPS - 1).values
     latest_data_row = np.array([latest_data_2023[col] for col in FEATURE_COLUMNS])
     current_sequence = np.vstack([latest_sequence_data, latest_data_row.reshape(1, -1)])
+    
     if current_sequence.shape[0] != N_STEPS or current_sequence.shape[1] != len(FEATURE_COLUMNS):
         raise ValueError(f"Initial sequence formation failed. Expected ({N_STEPS}, {len(FEATURE_COLUMNS)}), got {current_sequence.shape}")
     
     while current_year <= target_year:
-        predicted_cpi = single_prediction_step(
+        predicted_features_array = single_prediction_step(
             current_sequence, 
             model, 
-            SCALER_X_MEAN, SCALER_X_STD, 
-            SCALER_Y_MEAN, SCALER_Y_STD
+            SCALER_MEAN, 
+            SCALER_STD
         )
-        
-        forecast_row = {
-            'Year': current_year,
-            'CPI (%)': predicted_cpi,
-            'GDP_Growth': latest_data_2023['GDP_Growth'],
-            'Unemployment_Rate': latest_data_2023['Unemployment_Rate'],
-            'Crude_Oil_Prices': latest_data_2023['Crude_Oil_Prices'],
-            'Gold_Prices': latest_data_2023['Gold_Prices'],
-            'Real_Estate_Index': latest_data_2023['Real_Estate_Index'],
-            'Stock_Index': latest_data_2023['Stock_Index'],
-            'Money_Supply_M1': latest_data_2023['Money_Supply_M1'],
-            'Money_Supply_M2': latest_data_2023['Money_Supply_M2'],
-            'Industrial_Production': latest_data_2023['Industrial_Production'],
-            'Retail_Sales': latest_data_2023['Retail_Sales'],
-            'Exchange_Rate': latest_data_2023['Exchange_Rate']
-        }
+        forecast_row = {'Year': current_year}
+        for i, col_name in enumerate(PREDICTION_COLUMNS):
+            forecast_row[col_name] = predicted_features_array[i]
         
         full_forecast_data.append(forecast_row)
         
         if current_year == target_year:
             break
             
-        next_sequence = current_sequence[1:].copy()
-        
-        new_time_step = np.array([
-            predicted_cpi, 
-            latest_data_2023['GDP_Growth'], 
-            latest_data_2023['Unemployment_Rate'], 
-            latest_data_2023['Crude_Oil_Prices'], 
-            latest_data_2023['Gold_Prices'], 
-            latest_data_2023['Real_Estate_Index'], 
-            latest_data_2023['Stock_Index'], 
-            latest_data_2023['Money_Supply_M1'], 
-            latest_data_2023['Money_Supply_M2'], 
-            latest_data_2023['Industrial_Production'], 
-            latest_data_2023['Retail_Sales'], 
-            latest_data_2023['Exchange_Rate']
-        ])
-        current_sequence = np.vstack([next_sequence, new_time_step.reshape(1, -1)])
+        next_sequence_base = current_sequence[1:].copy()
+        new_time_step = predicted_features_array
+        current_sequence = np.vstack([next_sequence_base, new_time_step.reshape(1, -1)])
         current_year += 1
+        
     return pd.DataFrame(full_forecast_data)
 
 st.set_page_config(
@@ -175,9 +158,7 @@ st.markdown(
 st.markdown('<p class="main-header">📈 India CPI Multi-Year Forecast (GRU Model)</p>', unsafe_allow_html=True)
 
 st.write("""
-This application uses your trained GRU model to predict the Consumer Price Index (CPI) year-by-year. 
-For forecasts beyond 2024, the model uses the **predicted CPI** from the previous year, 
-while holding the other 11 economic factors constant at your 2023 input values.
+This application uses your trained GRU model to predict all 12 economic indicators year-by-year. 
 """)
 
 latest_inputs = {}
@@ -222,7 +203,9 @@ with st.form("inflation_form"):
         step=1
     )
     st.markdown("##### 2. Enter Estimated Economic Indicators for 2023 (Annual Averages)")
-    st.info("These **2023 inputs** will be used as the **constant base case** for all subsequent forecast years for all factors *except* the predicted CPI.")
+    
+    st.info("These **2023 inputs** will be used to generate the **first forecast for 2024**. From 2025 onwards, the model will use its *own* predictions as input.")
+
 
     cols = st.columns(3)
     
@@ -244,6 +227,7 @@ if submitted:
     try:
         latest_data_2023 = {k: v for k, v in latest_inputs.items()}
         ordered_latest_inputs = {col: latest_inputs[col] for col in FEATURE_COLUMNS}
+        
         forecast_df = multi_step_forecast(
             ordered_latest_inputs, 
             HISTORICAL_DF, 
@@ -256,7 +240,6 @@ if submitted:
         actual_data_df = historical_plot_df[historical_plot_df['Year'] <= 2023].copy()
         actual_data_df['Type'] = 'Historical CPI (Actual)'
         actual_data_df.loc[actual_data_df['Year'] == 2023, 'Type'] = 'Latest Input (2023 Actual)'
-        
         plot_forecast_df = forecast_df[['Year', 'CPI (%)']].copy()
         plot_forecast_df['Type'] = 'Forecast (Predicted)'
         plot_data = pd.concat([actual_data_df, plot_forecast_df], ignore_index=True)
@@ -270,19 +253,24 @@ if submitted:
             height=350
         )
         st.markdown(f"##### Full Predicted Economic Indicators ({HISTORICAL_DF.index.max() + 1} - {target_year})")
-        st.write("CPI is predicted iteratively; all other factors are held constant at your 2023 input.")
+        st.write("All 12 indicators are now predicted iteratively; the output from one year becomes the input for the next.")
+        
         st.dataframe(
             forecast_df.set_index('Year').style.format("{:.4f}"),
             use_container_width=True
         )
         st.success(f"Forecast successfully generated up to {target_year}.")
+        
         st.markdown("---")
         st.markdown("#### Model Context and Latest Data")
-        st.write("The chart above shows the full historical CPI trend (2007-2023) combined with the multi-year forecast (2024+).")
+        st.write("The chart above shows the historical CPI trend (2007-2023) combined with the multi-year *predicted CPI* (2024+). The table above shows the predicted values for *all 12 indicators*.")
+        
+        st.markdown("##### Your 2023 Input Values (Used as starting point for forecast)")
+        st.dataframe(pd.DataFrame(latest_inputs, index=['2023 Input']).T.style.format("{:.4f}"), use_container_width=True)
+        
         st.markdown("##### Latest Historical Data Used to Start Forecast (2010-2022 Averages)")
         st.dataframe(HISTORICAL_DF.style.format("{:.4f}"), use_container_width=True)
-        st.markdown("##### Your 2023 Input Values (Used as base case for forecast)")
-        st.dataframe(pd.DataFrame(latest_inputs, index=['2023 Input']).T.style.format("{:.4f}"), use_container_width=True)
+
     except Exception as e:
         st.error(f"An error occurred during prediction: {e}")
         st.error("Please ensure the model file is correctly loaded and the input format is consistent.")
